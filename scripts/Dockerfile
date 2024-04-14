@@ -5,6 +5,7 @@ ARG SHA=""
 
 # build minimized
 WORKDIR /
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.sjtug.sjtu.edu.cn/g' /etc/apk/repositories
 RUN set -xe && \
     apk add --no-cache --virtual .build-tools git g++ build-base linux-headers cmake python3 && \
     apk add --no-cache --virtual .build-deps curl-dev rapidjson-dev pcre2-dev yaml-cpp-dev && \
@@ -35,7 +36,7 @@ RUN set -xe && \
     cmake -DCMAKE_CXX_STANDARD=11 . && \
     make install -j $THREADS && \
     cd .. && \
-    git clone https://github.com/tindy2013/subconverter --depth=1 && \
+    git clone -b randy https://github.com/randydl/subconverter --depth=1 && \
     cd subconverter && \
     [ -n "$SHA" ] && sed -i 's/\(v[0-9]\.[0-9]\.[0-9]\)/\1-'"$SHA"'/' src/version.h;\
     python3 -m ensurepip && \
@@ -48,6 +49,7 @@ RUN set -xe && \
 FROM alpine:3.16
 LABEL maintainer="tindy.it@gmail.com"
 
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.sjtug.sjtu.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache --virtual subconverter-deps pcre2 libcurl yaml-cpp
 
 COPY --from=builder /subconverter/subconverter /usr/bin/

@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import stat
+from pathlib import Path
 from git import InvalidGitRepositoryError, Repo
 
 
@@ -22,7 +23,7 @@ def open_repo(path: str):
         return None
 
 
-def update_rules(repo_path: str, save_path: str, matches: list[str], keep_tree: bool):
+def update_rules(repo_path: str, save_path: str, matches: list[str], keep_tree: bool, section: str):
     os.makedirs(save_path, exist_ok=True)
     for pattern in matches:
         files = glob.glob(os.path.join(repo_path, pattern), recursive=True)
@@ -39,8 +40,23 @@ def update_rules(repo_path: str, save_path: str, matches: list[str], keep_tree: 
                 file_dest_path = os.path.join(file_dest_dir, file_name)
             else:
                 file_dest_path = os.path.join(save_path, file_name)
-            shutil.copy2(file, file_dest_path)
+            if section == 'ACL4SSR_config':
+                file_src = Path(file)
+                file_dst = Path(file_dest_path)
+                if '_Online' not in file_src.name: continue
+                file_txt = file_src.read_text()
+                file_dst.write_text(file_txt.replace(
+                    'https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master',
+                    'https://gcore.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master'
+                ))
+                file_dst.with_stem(file_dst.stem.replace('_Online', '')).write_text(file_txt.replace(
+                    'https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master',
+                    'rules/ACL4SSR'
+                ))
+            else:
+                shutil.copy2(file, file_dest_path)
             logging.info(f"copied {file} to {file_dest_path}")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -70,7 +86,7 @@ def main():
             r = Repo.clone_from(url, repo_path)
         else:
             logging.info(f"repo {repo_path} exists")
-            
+
         try:
             if commit is not None:
                 logging.info(f"checking out to commit {commit}")
@@ -85,7 +101,7 @@ def main():
             logging.error(f"checkout failed {e}")
             continue
 
-        update_rules(repo_path, save_path, matches, keep_tree)
+        update_rules(repo_path, save_path, matches, keep_tree, section)
 
     shutil.rmtree("./tmp", ignore_errors=True)
 
